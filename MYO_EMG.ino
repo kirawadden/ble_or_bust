@@ -1,3 +1,5 @@
+ #include <os_wrap.h>
+
 
 /**
  * @file    MYO_EMG
@@ -17,32 +19,29 @@ static BLEUUID    charUUID("d5060401-a904-deb9-4748-2c7f4a124842");
 static BLEUUID    emgSUUID("d5060005-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 0
 static BLEUUID    emgCUUID("d5060105-a904-deb9-4748-2c7f4a124842");
-// EMG characteristic UUID 1
-static BLEUUID    emgC1UUID("d5060205-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 2
 static BLEUUID    emgC2UUID("d5060305-a904-deb9-4748-2c7f4a124842");
-// EMG characteristic UUID 3
-static BLEUUID    emgC3UUID("d5060405-a904-deb9-4748-2c7f4a124842");
-
 
 static BLEAddress *pServerAddress;
 static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
-//static BLERemoteCharacteristic* p1RemoteCharacteristic;
-//static BLERemoteCharacteristic* p2RemoteCharacteristic;
-//static BLERemoteCharacteristic* p3RemoteCharacteristic;
 
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     Serial.print("Notify callback for EMG Data Characteristic: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    int8_t emgData
     for ( int i = 0; i < length; i ++)
     {
       Serial.println((int8_t)pData[i]);
       Serial.print(" ");
     }
 }
+
+//void motorControl() {
+//  
+//}
 
 bool connectToServer(BLEAddress pAddress) {
     Serial.print("Forming a connection to ");
@@ -119,17 +118,17 @@ bool connectToServer(BLEAddress pAddress) {
     pRemoteCharacteristic->registerForNotify(notifyCallback);
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 
-//    // Obtain a reference to the characteristic in the service of the remote BLE server.
-//    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
-//    if (pRemoteCharacteristic == nullptr) {
-//      Serial.print("Failed to find our characteristic UUID: ");
-//      Serial.println(emgC2UUID.toString().c_str());
-//      return false;
-//    }
-//    Serial.println(" - Found our EMG characteristic");
-//    Serial.println(emgC2UUID.toString().c_str());
-//    pRemoteCharacteristic->registerForNotify(notifyCallback);
-//    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
+    // Obtain a reference to the characteristic in the service of the remote BLE server.
+    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
+    if (pRemoteCharacteristic == nullptr) {
+      Serial.print("Failed to find our characteristic UUID: ");
+      Serial.println(emgC2UUID.toString().c_str());
+      return false;
+    }
+    Serial.println(" - Found our EMG characteristic");
+    Serial.println(emgC2UUID.toString().c_str());
+    pRemoteCharacteristic->registerForNotify(notifyCallback);
+    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
     
 //    // Obtain a reference to the characteristic in the service of the remote BLE server.
 //    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC3UUID);
