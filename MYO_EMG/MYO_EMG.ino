@@ -1,3 +1,5 @@
+#include <ESP32_Servo.h>
+
 /**
  * @file    MYO_EMG
  * @author  Kira Wadden
@@ -7,6 +9,19 @@
 
 #include <BLEDevice.h>
 
+//#include <Servo.h>
+///variables for the linear actuator
+#define LINEARPIN 10
+#define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
+#define LINEAR_MAX 2000 
+
+Servo LINEAR;
+int linear50Value = 1500; //current positional value being sent to the linear actuator
+bool bicepFlexed = false;
+bool extended = false;
+
+
+//myo ble variables
 // The remote service we wish to connect to.
 static BLEUUID serviceUUID("d5060001-a904-deb9-4748-2c7f4a124842");
 // The characteristic of the remote service we are interested in.
@@ -35,6 +50,7 @@ static void notifyCallback(
       Serial.print(" ");
     }
 }
+    
 
 bool connectToServer(BLEAddress pAddress) {
     Serial.print("Forming a connection to ");
@@ -138,6 +154,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 void setup() {
   Serial.begin(115200);
+  LINEAR.attach(LINEARPIN, LINEAR_MIN, LINEAR_MAX);
   Serial.println("Starting Arduino BLE Client application...");
   BLEDevice::init("");
 
@@ -148,6 +165,8 @@ void setup() {
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true);
   pBLEScan->start(30);
+  LINEAR.writeMicroseconds(LINEAR_MAX);
+  delay(10000);
 } // End of setup.
 
 
@@ -165,6 +184,16 @@ void loop() {
       Serial.println("We have failed to connect to the server; there is nothin more we will do.");
     }
     doConnect = false;
+  }
+  if(bicepFlexed){
+        if(extended){
+          LINEAR.writeMicroseconds(LINEAR_MIN);
+          delay(10000);
+          }
+         else{
+           LINEAR.writeMicroseconds(LINEAR_MAX);
+           delay(10000);
+         }
   }
   delay(1000);
 } // End of loop
