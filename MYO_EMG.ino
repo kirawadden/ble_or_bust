@@ -1,6 +1,3 @@
- #include <os_wrap.h>
-
-
 /**
  * @file    MYO_EMG
  * @author  Kira Wadden
@@ -31,17 +28,13 @@ static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     Serial.print("Notify callback for EMG Data Characteristic: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    int8_t emgData
+    int8_t emgData;
     for ( int i = 0; i < length; i ++)
     {
       Serial.println((int8_t)pData[i]);
       Serial.print(" ");
     }
 }
-
-//void motorControl() {
-//  
-//}
 
 bool connectToServer(BLEAddress pAddress) {
     Serial.print("Forming a connection to ");
@@ -72,7 +65,7 @@ bool connectToServer(BLEAddress pAddress) {
     }
     Serial.println(" - Found our characteristic");
 
-    // set sleep mode (hopefully)
+    // set sleep mode 
     uint8_t sleepPkt[3] = {0x09, 0x01, 0x01};
     pRemoteCharacteristic->writeValue(sleepPkt, 3, true);
     delay(500);
@@ -107,18 +100,6 @@ bool connectToServer(BLEAddress pAddress) {
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 
     // Obtain a reference to the characteristic in the service of the remote BLE server.
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC1UUID);
-    if (pRemoteCharacteristic == nullptr) {
-      Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(emgC1UUID.toString().c_str());
-      return false;
-    }
-    Serial.println(" - Found our EMG characteristic");
-    Serial.println(emgC1UUID.toString().c_str());
-    pRemoteCharacteristic->registerForNotify(notifyCallback);
-    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-
-    // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
     if (pRemoteCharacteristic == nullptr) {
       Serial.print("Failed to find our characteristic UUID: ");
@@ -129,18 +110,6 @@ bool connectToServer(BLEAddress pAddress) {
     Serial.println(emgC2UUID.toString().c_str());
     pRemoteCharacteristic->registerForNotify(notifyCallback);
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-    
-//    // Obtain a reference to the characteristic in the service of the remote BLE server.
-//    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC3UUID);
-//    if (pRemoteCharacteristic == nullptr) {
-//      Serial.print("Failed to find our characteristic UUID: ");
-//      Serial.println(emgC3UUID.toString().c_str());
-//      return false;
-//    }
-//    Serial.println(" - Found our EMG characteristic");
-//    Serial.println(emgC3UUID.toString().c_str());
-//    pRemoteCharacteristic->registerForNotify(notifyCallback);
-//    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
@@ -162,7 +131,6 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
       pServerAddress = new BLEAddress(advertisedDevice.getAddress());
       doConnect = true;
-
     } // Found our server
   } // onResult
 }; // MyAdvertisedDeviceCallbacks
@@ -183,8 +151,7 @@ void setup() {
 } // End of setup.
 
 
-// This is the Arduino main loop function - we control descriptor 0x2902 for the EMG characteristics in here
-//const uint8_t notificationOn[] = {0x1, 0x0};
+// This is the Arduino main loop function
 void loop() {
 
   // If the flag "doConnect" is true then we have scanned for and found the desired
@@ -199,10 +166,5 @@ void loop() {
     }
     doConnect = false;
   }
-  
-//  if (connected) {
-//      Serial.println("Notifications turned on");
-//      pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-//  }
   delay(1000);
 } // End of loop
