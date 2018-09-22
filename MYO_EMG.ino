@@ -17,21 +17,13 @@ static BLEUUID    charUUID("d5060401-a904-deb9-4748-2c7f4a124842");
 static BLEUUID    emgSUUID("d5060005-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 0
 static BLEUUID    emgCUUID("d5060105-a904-deb9-4748-2c7f4a124842");
-// EMG characteristic UUID 1
-static BLEUUID    emgC1UUID("d5060205-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 2
 static BLEUUID    emgC2UUID("d5060305-a904-deb9-4748-2c7f4a124842");
-// EMG characteristic UUID 3
-static BLEUUID    emgC3UUID("d5060405-a904-deb9-4748-2c7f4a124842");
-
 
 static BLEAddress *pServerAddress;
 static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
-//static BLERemoteCharacteristic* p1RemoteCharacteristic;
-//static BLERemoteCharacteristic* p2RemoteCharacteristic;
-//static BLERemoteCharacteristic* p3RemoteCharacteristic;
 
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
@@ -73,7 +65,7 @@ bool connectToServer(BLEAddress pAddress) {
     }
     Serial.println(" - Found our characteristic");
 
-    // set sleep mode (hopefully)
+    // set sleep mode
     uint8_t sleepPkt[3] = {0x09, 0x01, 0x01};
     pRemoteCharacteristic->writeValue(sleepPkt, 3, true);
     delay(500);
@@ -108,40 +100,16 @@ bool connectToServer(BLEAddress pAddress) {
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 
     // Obtain a reference to the characteristic in the service of the remote BLE server.
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC1UUID);
+    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
     if (pRemoteCharacteristic == nullptr) {
       Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(emgC1UUID.toString().c_str());
+      Serial.println(emgC2UUID.toString().c_str());
       return false;
     }
     Serial.println(" - Found our EMG characteristic");
-    Serial.println(emgC1UUID.toString().c_str());
+    Serial.println(emgC2UUID.toString().c_str());
     pRemoteCharacteristic->registerForNotify(notifyCallback);
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-
-//    // Obtain a reference to the characteristic in the service of the remote BLE server.
-//    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
-//    if (pRemoteCharacteristic == nullptr) {
-//      Serial.print("Failed to find our characteristic UUID: ");
-//      Serial.println(emgC2UUID.toString().c_str());
-//      return false;
-//    }
-//    Serial.println(" - Found our EMG characteristic");
-//    Serial.println(emgC2UUID.toString().c_str());
-//    pRemoteCharacteristic->registerForNotify(notifyCallback);
-//    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-    
-//    // Obtain a reference to the characteristic in the service of the remote BLE server.
-//    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC3UUID);
-//    if (pRemoteCharacteristic == nullptr) {
-//      Serial.print("Failed to find our characteristic UUID: ");
-//      Serial.println(emgC3UUID.toString().c_str());
-//      return false;
-//    }
-//    Serial.println(" - Found our EMG characteristic");
-//    Serial.println(emgC3UUID.toString().c_str());
-//    pRemoteCharacteristic->registerForNotify(notifyCallback);
-//    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
@@ -184,8 +152,7 @@ void setup() {
 } // End of setup.
 
 
-// This is the Arduino main loop function - we control descriptor 0x2902 for the EMG characteristics in here
-//const uint8_t notificationOn[] = {0x1, 0x0};
+// This is the Arduino main loop functio
 void loop() {
 
   // If the flag "doConnect" is true then we have scanned for and found the desired
@@ -200,10 +167,5 @@ void loop() {
     }
     doConnect = false;
   }
-  
-//  if (connected) {
-//      Serial.println("Notifications turned on");
-//      pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
-//  }
   delay(1000);
 } // End of loop
