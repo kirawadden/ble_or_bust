@@ -1,4 +1,4 @@
-#include <ESP32_Servo.h>
+//#include <ESP32_Servo.h>
 
 /**
  * @file    MYO_EMG
@@ -8,17 +8,36 @@
  */
 
 #include <BLEDevice.h>
+#include <time.h>
 
 //#include <Servo.h>
 ///variables for the linear actuator
-#define LINEARPIN 10
-#define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
-#define LINEAR_MAX 2000 
-
-Servo LINEAR;
-int linear50Value = 1500; //current positional value being sent to the linear actuator
+//#define LINEARPIN 10
+//#define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
+//#define LINEAR_MAX 2000 
+//
+//Servo LINEAR;
+//int linear50Value = 1500; //current positional value being sent to the linear actuator
 bool bicepFlexed = false;
-bool extended = false;
+//bool extended = false;
+
+const int interval = 500;
+
+int track;
+int tracker;
+double threshold;
+int tot[interval + 5][8];
+int triggercount;
+bool lasttriggered;
+bool triggerPattern[3];
+int triggerPatternTail;
+int doubleFlexCount;
+int changeCounter; // counts # of changes after last double flex
+
+bool hasDebounced;
+bool isActive;
+
+
 
 
 //myo ble variables
@@ -43,11 +62,152 @@ static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     Serial.print("Notify callback for EMG Data Characteristic: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
-    int8_t emgData;
+    uint8_t emgData;
     for ( int i = 0; i < length; i ++)
     {
-      Serial.println((int8_t)pData[i]);
-      Serial.print(" ");
+      //Serial.println((uint8_t)pData[i]);
+      doubleFlex(pData);
+    }
+}
+
+bool checkDoubleFlex() {
+  if (triggerPattern[findIndexInTriggerPattern(triggerPatternTail - 1)] && 
+      !triggerPattern[findIndexInTriggerPattern(triggerPatternTail - 2)] && 
+      triggerPattern[findIndexInTriggerPattern(triggerPatternTail - 3)])
+    return true;
+  
+  return false;
+}
+
+int findIndexInTriggerPattern(int index){
+  if (index >= 0) return index;
+  else {
+    return 3 + index;
+  }
+}
+
+
+//void DataCollector(uint8_t* emgSamples) { //maybe make emgSamples a pointer
+//  
+//  for (int i = 0; i < 8; i++) {
+//      tot[track][i] = abs(static_cast<int>(emgSamples[i]));
+//  }
+//  track++;
+//  tracker++;
+//}
+
+    
+void print(uint8_t* emgSamples)
+{
+  int sum = 0;
+
+  int average [8];
+  for (int j = 0; j < 8; j++) {
+    for (int i = 0; i < interval; i++) {
+      sum += tot[i][j];
+    }
+    average[j] = sum / 8;
+    sum = 0;
+  }
+
+  for (size_t i = 0; i < sizeof(emgSamples)/sizeof(uint8_t); i++) {
+    sum += average[i];
+  }
+  sum = sum / static_cast<int>(sizeof(emgSamples)/sizeof(uint8_t));
+
+  // print average EMG data
+  for (size_t i = 0; i < sizeof(emgSamples)/sizeof(uint8_t); i++) {
+    Serial.println(average[i]);
+  }
+
+  if (sum >= threshold) {
+    if (!lasttriggered) triggercount++;
+    Serial.println("TRIGGERED");
+    lasttriggered = 1;
+  }
+  else  {
+    Serial.println("NO ACTION");
+    lasttriggered = 0;
+  }
+
+  if (lasttriggered != triggerPattern[triggerPatternTail == 0 ? 
+      sizeof(triggerPattern) - 1 : (triggerPatternTail - 1)]) {
+      if (!hasDebounced) {
+        hasDebounced = true;
+        return;
+      }
+
+      isActive = true;
+
+      triggerPattern[triggerPatternTail] = lasttriggered;
+      triggerPatternTail = (triggerPatternTail + 1) % sizeof(triggerPattern);
+      changeCounter++;
+      if (checkDoubleFlex() && changeCounter > 2) {
+        doubleFlexCount++;
+        changeCounter = 0;
+        bicepFlexed = true;
+      }
+      hasDebounced = false;
+  }
+
+  Serial.println("trigger count: "); 
+  Serial.print(triggercount);
+  Serial.println("double flex count: ");
+  Serial.print(doubleFlexCount);
+}
+
+
+void doubleFlex(uint8_t* pData)
+{
+  track = 0;
+  threshold = 20;
+  tot[interval + 5][8];
+  triggercount = 0;
+  lasttriggered = false;
+  triggerPattern[0] = 0;
+  triggerPattern[1] = 0;
+  triggerPattern[2] = 0;
+
+  doubleFlexCount = 0;
+  triggerPatternTail = 1;
+  hasDebounced = 0;
+  isActive = 0;
+  changeCounter = 0;
+  hasDebounced = 0;
+
+  
+    // We catch any exceptions that might occur below -- see the catch statement for more details.
+    try {
+
+    for (int i = 0; i < 8; i++) {
+      tot[track][i] = abs(static_cast<int>(pData[i]));
+    }
+    track++;
+    tracker++;
+    
+
+    //Myo Sampling rate: 200 Hz
+    if (tracker >= 600) {
+      changeCounter = 0;
+      
+      if (!isActive) {
+        triggerPatternTail = 1;
+        triggerPattern[0] = triggerPattern[2];
+        triggerPattern[1] = 0;
+        triggerPattern[2] = 0;
+      }
+
+      tracker = 0;
+      isActive = false;
+    }
+     
+    print(pData);
+    track = 0;
+
+    // If a standard exception occurred, we print out its message
+    } catch (int e){
+        Serial.println("Error");
+        Serial.println(e);
     }
 }
     
@@ -154,7 +314,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 void setup() {
   Serial.begin(115200);
-  LINEAR.attach(LINEARPIN, LINEAR_MIN, LINEAR_MAX);
+//  LINEAR.attach(LINEARPIN, LINEAR_MIN, LINEAR_MAX);
   Serial.println("Starting Arduino BLE Client application...");
   BLEDevice::init("");
 
@@ -165,8 +325,8 @@ void setup() {
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true);
   pBLEScan->start(30);
-  LINEAR.writeMicroseconds(LINEAR_MAX);
-  delay(10000);
+//  LINEAR.writeMicroseconds(LINEAR_MAX);
+  delay(1000);
 } // End of setup.
 
 
@@ -185,15 +345,15 @@ void loop() {
     }
     doConnect = false;
   }
-  if(bicepFlexed){
-        if(extended){
-          LINEAR.writeMicroseconds(LINEAR_MIN);
-          delay(10000);
-          }
-         else{
-           LINEAR.writeMicroseconds(LINEAR_MAX);
-           delay(10000);
-         }
-  }
+//  if(bicepFlexed){
+//        if(extended){
+//          LINEAR.writeMicroseconds(LINEAR_MIN);
+//          delay(10000);
+//          }
+//         else{
+//           LINEAR.writeMicroseconds(LINEAR_MAX);
+//           delay(10000);
+//         }
+//  }
   delay(1000);
 } // End of loop
