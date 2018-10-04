@@ -21,11 +21,10 @@
 bool bicepFlexed = false;
 //bool extended = false;
 
-const int interval = 500;
+const int interval = 800;  // 800 ms !!!change this to single flex
 
 int track;
 int tracker;
-double threshold;
 int tot[interval + 5][8];
 int triggercount;
 bool lasttriggered;
@@ -34,8 +33,20 @@ int triggerPatternTail;
 int doubleFlexCount;
 int changeCounter; // counts # of changes after last double flex
 
+
+int sum = 0;
+int total[interval + 5][8];
+int newAverage = 0;
+int average [8];
+
+int SingleInterval;
+unsigned int pass;         // Number of passes within the the interval
+unsigned int totalSamples;   // total number of samples colldected within interval
+
 bool hasDebounced;
 bool isActive;
+
+const double threshold = 20;          //change this for threshold
 
 
 
@@ -51,7 +62,7 @@ static BLEUUID    emgSUUID("d5060005-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 0
 static BLEUUID    emgCUUID("d5060105-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 2
-static BLEUUID    emgC2UUID("d5060305-a904-deb9-4748-2c7f4a124842");
+//static BLEUUID    emgC2UUID("d5060305-a904-deb9-4748-2c7f4a124842");
 
 static BLEAddress *pServerAddress;
 static boolean doConnect = false;
@@ -63,11 +74,7 @@ static void notifyCallback(
     Serial.print("Notify callback for EMG Data Characteristic: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     uint8_t emgData;
-    for ( int i = 0; i < length; i ++)
-    {
-      //Serial.println((uint8_t)pData[i]);
-      doubleFlex(pData);
-    }
+    singleFlex((int8_t*)pData);
 }
 
 bool checkDoubleFlex() {
@@ -97,70 +104,104 @@ int findIndexInTriggerPattern(int index){
 //}
 
     
-void print(uint8_t* emgSamples)
+void print(int8_t* emgSamples)
 {
-  int sum = 0;
 
-  int average [8];
+//    for (int j = 0; j < 8; j++) {
+//      for (int i = 0; i < interval; i++) {
+//          //Serial.print("Entire Total:");
+//          Serial.println(tot[i][j]);
+//        }
+//    }
+//
+//      for (int j = 0; j < 8; j++) {
+//        for (int i = 0; i < interval; i++) {
+//          newAverage += tot[j][i];
+//          Serial.print("current: ");
+//          Serial.println(tot[j][i]);
+//        }
+//        newAverage = newAverage / 8;
+//        totalSamples++;
+//        if (newAverage >= threshold) pass++;
+//        //Serial.print("Average");
+//        //Serial.println(newAverage);
+//        newAverage = 0;
+//    }
+//
+//    double eightpercent = pass/totalSamples;
+//    if (eightpercent <= 0.8) Serial.println("Pass");
+//    else Serial.println("fail");
+  
   for (int j = 0; j < 8; j++) {
-    for (int i = 0; i < interval; i++) {
+    for (int i = 0; i < interval+5; i++) {
       sum += tot[i][j];
     }
+    
     average[j] = sum / 8;
+    Serial.print("Average");
+    Serial.println(sum);
+
+    if (sum >= threshold) {
+      Serial.println("TRIGGERED---------------------------------------------------------------------------------------------------------------------------");
+    }
+    else  {
+      Serial.println("NO ACTION");
+    }
+  
     sum = 0;
   }
 
-  for (size_t i = 0; i < sizeof(emgSamples)/sizeof(uint8_t); i++) {
-    sum += average[i];
-  }
-  sum = sum / static_cast<int>(sizeof(emgSamples)/sizeof(uint8_t));
+//  for (size_t i = 0; i < sizeof(emgSamples)/sizeof(int8_t); i++) {
+//    sum += average[i];
+//  }
+//  sum = sum / static_cast<int>(sizeof(emgSamples)/sizeof(int8_t));
 
   // print average EMG data
-  for (size_t i = 0; i < sizeof(emgSamples)/sizeof(uint8_t); i++) {
-    Serial.println(average[i]);
-  }
+//  for (size_t i = 0; i < sizeof(emgSamples)/sizeof(int8_t); i++) {
+//    //Serial.print("Average: ");
+//    //Serial.println(average[i]);
+//  }
 
-  if (sum >= threshold) {
-    if (!lasttriggered) triggercount++;
-    Serial.println("TRIGGERED");
-    lasttriggered = 1;
-  }
-  else  {
-    Serial.println("NO ACTION");
-    lasttriggered = 0;
-  }
+//    if (!lasttriggered) triggercount++;
+//      Serial.println("TRIGGERED---------------------------------------------------------------------------------------------------------------------------");
+//      lasttriggered = 1;
+//    }
+//    else  {
+//      Serial.println("NO ACTION");
+//      lasttriggered = 0;
+//    }
 
-  if (lasttriggered != triggerPattern[triggerPatternTail == 0 ? 
-      sizeof(triggerPattern) - 1 : (triggerPatternTail - 1)]) {
-      if (!hasDebounced) {
-        hasDebounced = true;
-        return;
-      }
 
-      isActive = true;
+//  if (lasttriggered != triggerPattern[triggerPatternTail == 0 ? 
+//      sizeof(triggerPattern) - 1 : (triggerPatternTail - 1)]) {
+//      if (!hasDebounced) {
+//        hasDebounced = true;
+//        return;
+//      }
+//
+//      isActive = true;
+//
+//      triggerPattern[triggerPatternTail] = lasttriggered;
+//      triggerPatternTail = (triggerPatternTail + 1) % sizeof(triggerPattern);
+//      changeCounter++;
+//      if (checkDoubleFlex() && changeCounter > 2) {
+//        doubleFlexCount++;
+//        changeCounter = 0;
+//        bicepFlexed = true;
+//      }
+//      hasDebounced = false;
+//  }
 
-      triggerPattern[triggerPatternTail] = lasttriggered;
-      triggerPatternTail = (triggerPatternTail + 1) % sizeof(triggerPattern);
-      changeCounter++;
-      if (checkDoubleFlex() && changeCounter > 2) {
-        doubleFlexCount++;
-        changeCounter = 0;
-        bicepFlexed = true;
-      }
-      hasDebounced = false;
-  }
-
-  Serial.println("trigger count: "); 
-  Serial.print(triggercount);
-  Serial.println("double flex count: ");
-  Serial.print(doubleFlexCount);
+  //Serial.print("trigger count: "); 
+  //Serial.println(triggercount);
+  //Serial.print("double flex count: ");
+  //Serial.println(doubleFlexCount);
 }
 
 
-void doubleFlex(uint8_t* pData)
+void singleFlex(int8_t* pData)
 {
   track = 0;
-  threshold = 20;
   tot[interval + 5][8];
   triggercount = 0;
   lasttriggered = false;
@@ -275,17 +316,17 @@ bool connectToServer(BLEAddress pAddress) {
     pRemoteCharacteristic->registerForNotify(notifyCallback);
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 
-    // Obtain a reference to the characteristic in the service of the remote BLE server.
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
-    if (pRemoteCharacteristic == nullptr) {
-      Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(emgC2UUID.toString().c_str());
-      return false;
-    }
-    Serial.println(" - Found our EMG characteristic");
-    Serial.println(emgC2UUID.toString().c_str());
-    pRemoteCharacteristic->registerForNotify(notifyCallback);
-    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
+//    // Obtain a reference to the characteristic in the service of the remote BLE server.
+//    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
+//    if (pRemoteCharacteristic == nullptr) {
+//      Serial.print("Failed to find our characteristic UUID: ");
+//      Serial.println(emgC2UUID.toString().c_str());
+//      return false;
+//    }
+//    Serial.println(" - Found our EMG characteristic");
+//    Serial.println(emgC2UUID.toString().c_str());
+//    pRemoteCharacteristic->registerForNotify(notifyCallback);
+//    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
