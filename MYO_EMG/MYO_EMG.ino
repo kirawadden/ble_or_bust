@@ -51,7 +51,7 @@ static void notifyCallback(
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
     double sum = 0;
-    double threshold = 25;
+    double threshold = 20;
     
     for ( int i = 0; i < length; i ++)
     {
@@ -68,7 +68,7 @@ static void notifyCallback(
     (countTotal)++; //keep track of how many times EMG values are read
     Serial.print("The countTotal is: ");
     Serial.println(countTotal);
-    if(countTotal >100)
+    if(countTotal >100 || count>20)
     {
       if(count>20){
         triggered = true;
