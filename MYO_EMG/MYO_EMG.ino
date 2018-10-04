@@ -17,8 +17,7 @@
 
 Servo LINEAR;
 int linear50Value = 1500; //current positional value being sent to the linear actuator
-bool bicepFlexed = false;
-bool extended = false;
+bool handClosed = false; //use to keep track of the position of the actuator, start off with hand being assumed open
 
 
 //myo ble variables
@@ -39,16 +38,33 @@ static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
+//variables for the rolling window approach
+double sum;
+double threshold;
+int count = 0; //count of how many times the values are greater than the threshold
+int countTotal = 0; //counter for the total number of times EMG data is read in one loop
+
+bool triggered = false; //bool to say if 80% of countTotal is above threshold then trigger
+
+
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     Serial.print("Notify callback for EMG Data Characteristic: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
+    if(countTotal == 100){ //reset values to 0 after 100 loops of EMG values
+      count = 0;
+      countTotal = 0;
+      }
     for ( int i = 0; i < length; i ++)
     {
-      Serial.println((int8_t)pData[i]);
-      Serial.print(" ");
+      sum +=(int8_t)pData[i];
+      Serial.print("The sum of that line of characteristics is");
+      Serial.println(sum);
     }
+    if(sum/length >= threshold) count++; //checks if that 16 byte array of EMG values is above threshold, if so increment the count
+    countTotal++; //keep track of how many times EMG values are read
+    
 }
     
 
@@ -185,15 +201,16 @@ void loop() {
     }
     doConnect = false;
   }
-  if(bicepFlexed){
-        if(extended){
-          LINEAR.writeMicroseconds(LINEAR_MIN);
+  if(count == 80){
+      if(handClosed){
+          LINEAR.writeMicroseconds(LINEAR_MAX);
           delay(10000);
           }
          else{
-           LINEAR.writeMicroseconds(LINEAR_MAX);
+           LINEAR.writeMicroseconds(LINEAR_MIN);
            delay(10000);
          }
-  }
+    
+    }
   delay(1000);
 } // End of loop
