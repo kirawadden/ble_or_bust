@@ -10,7 +10,7 @@
 #include <BLEDevice.h>
 
 //variables for the linear actuator
-#define LINEARPIN 17
+#define LINEARPIN 18
 #define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
 #define LINEAR_MAX 2000 
 
@@ -51,13 +51,8 @@ static void notifyCallback(
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
     double sum = 0;
-    double threshold = 15;
-    if(countTotal >100)
-    {
-      if(count>50) triggered = true;
-      countTotal = 0;
-      count = 0;
-      }
+    double threshold = 25;
+    
     for ( int i = 0; i < length; i ++)
     {
       sum += abs((int8_t)pData[i]);
@@ -73,7 +68,28 @@ static void notifyCallback(
     (countTotal)++; //keep track of how many times EMG values are read
     Serial.print("The countTotal is: ");
     Serial.println(countTotal);
-    
+    if(countTotal >100)
+    {
+      if(count>20){
+        triggered = true;
+        if(handClosed){
+            LINEAR.writeMicroseconds(LINEAR_MAX);
+            Serial.println("WRITE TO MAX");
+            delay(10000);
+            handClosed = false;
+            }
+         else{
+            LINEAR.writeMicroseconds(LINEAR_MIN);
+            Serial.println("WRITE TO MIN YO");
+            delay(10000);
+        
+            handClosed = true;
+        } 
+      
+      }
+      countTotal = 0;
+      count = 0;
+    }
     
 }
     
@@ -213,22 +229,22 @@ void loop() {
     doConnect = false;
   }
   
-    if(triggered){
-        Serial.println("TRIGGERED");
-        if(handClosed){
-            LINEAR.writeMicroseconds(LINEAR_MAX);
-            Serial.println("WRITE TO MAX");
-            delay(10000);
-            handClosed = false;
-            }
-         else{
-            LINEAR.writeMicroseconds(LINEAR_MIN);
-            Serial.println("WRITE TO MIN YO");
-            delay(10000);
-        
-            handClosed = true; 
-          }
-    
-      }
+//    if(triggered){
+//        Serial.println("TRIGGERED");
+//        if(handClosed){
+//            LINEAR.writeMicroseconds(LINEAR_MAX);
+//            Serial.println("WRITE TO MAX");
+//            delay(10000);
+//            handClosed = false;
+//            }
+//         else{
+//            LINEAR.writeMicroseconds(LINEAR_MIN);
+//            Serial.println("WRITE TO MIN YO");
+//            delay(10000);
+//        
+//            handClosed = true; 
+//          }
+//    
+//      }
       
 } // End of loop
