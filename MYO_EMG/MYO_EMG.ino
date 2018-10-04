@@ -1,4 +1,4 @@
-#include <ESP32_Servo.h>
+#include <ESP32Servo.h>
 
 /**
  * @file    MYO_EMG
@@ -9,14 +9,13 @@
 
 #include <BLEDevice.h>
 
-//#include <Servo.h>
-///variables for the linear actuator
-#define LINEARPIN 10
+//variables for the linear actuator
+#define LINEARPIN 17
 #define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
 #define LINEAR_MAX 2000 
 
 Servo LINEAR;
-int linear50Value = 1500; //current positional value being sent to the linear actuator
+//int linear50Value = 1500; //current positional value being sent to the linear actuator
 bool handClosed = false; //use to keep track of the position of the actuator, start off with hand being assumed open
 
 
@@ -31,7 +30,7 @@ static BLEUUID    emgSUUID("d5060005-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 0
 static BLEUUID    emgCUUID("d5060105-a904-deb9-4748-2c7f4a124842");
 // EMG characteristic UUID 2
-static BLEUUID    emgC2UUID("d5060305-a904-deb9-4748-2c7f4a124842");
+// static BLEUUID    emgC2UUID("d5060305-a904-deb9-4748-2c7f4a124842");
 
 static BLEAddress *pServerAddress;
 static boolean doConnect = false;
@@ -39,8 +38,7 @@ static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
 
 //variables for the rolling window approach
-double sum;
-double threshold;
+
 int count = 0; //count of how many times the values are greater than the threshold
 int countTotal = 0; //counter for the total number of times EMG data is read in one loop
 
@@ -52,18 +50,30 @@ static void notifyCallback(
     Serial.print("Notify callback for EMG Data Characteristic: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
-    if(countTotal == 100){ //reset values to 0 after 100 loops of EMG values
-      count = 0;
+    double sum = 0;
+    double threshold = 15;
+    if(countTotal >100)
+    {
+      if(count>50) triggered = true;
       countTotal = 0;
+      count = 0;
       }
     for ( int i = 0; i < length; i ++)
     {
-      sum +=(int8_t)pData[i];
-      Serial.print("The sum of that line of characteristics is");
-      Serial.println(sum);
+      sum += abs((int8_t)pData[i]);
     }
-    if(sum/length >= threshold) count++; //checks if that 16 byte array of EMG values is above threshold, if so increment the count
-    countTotal++; //keep track of how many times EMG values are read
+    Serial.print("The sum of that line of characteristics is: ");
+    Serial.println(sum/length);
+    if(sum/length >= threshold) {
+      (count)++;
+      Serial.print("The count is: ");
+      Serial.println(count);
+      
+      } //checks if that 16 byte array of EMG values is above threshold, if so increment the count
+    (countTotal)++; //keep track of how many times EMG values are read
+    Serial.print("The countTotal is: ");
+    Serial.println(countTotal);
+    
     
 }
     
@@ -132,16 +142,16 @@ bool connectToServer(BLEAddress pAddress) {
     pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 
     // Obtain a reference to the characteristic in the service of the remote BLE server.
-    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
-    if (pRemoteCharacteristic == nullptr) {
-      Serial.print("Failed to find our characteristic UUID: ");
-      Serial.println(emgC2UUID.toString().c_str());
-      return false;
-    }
-    Serial.println(" - Found our EMG characteristic");
-    Serial.println(emgC2UUID.toString().c_str());
-    pRemoteCharacteristic->registerForNotify(notifyCallback);
-    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
+//    pRemoteCharacteristic = pRemoteService->getCharacteristic(emgC2UUID);
+//    if (pRemoteCharacteristic == nullptr) {
+//      Serial.print("Failed to find our characteristic UUID: ");
+//      Serial.println(emgC2UUID.toString().c_str());
+//      return false;
+//    }
+//    Serial.println(" - Found our EMG characteristic");
+//    Serial.println(emgC2UUID.toString().c_str());
+//    pRemoteCharacteristic->registerForNotify(notifyCallback);
+//    pRemoteCharacteristic->getDescriptor(BLEUUID((uint16_t)0x2902))->writeValue((uint8_t*)notificationOn, 2, true);
 }
 /**
  * Scan for BLE servers and find the first one that advertises the service we are looking for.
@@ -170,7 +180,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 void setup() {
   Serial.begin(115200);
-  LINEAR.attach(LINEARPIN, LINEAR_MIN, LINEAR_MAX);
+  //LINEAR.attach(LINEARPIN, LINEAR_MIN, LINEAR_MAX);
   Serial.println("Starting Arduino BLE Client application...");
   BLEDevice::init("");
 
@@ -181,6 +191,7 @@ void setup() {
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true);
   pBLEScan->start(30);
+  LINEAR.attach(LINEARPIN);
   LINEAR.writeMicroseconds(LINEAR_MAX);
   delay(10000);
 } // End of setup.
@@ -201,16 +212,23 @@ void loop() {
     }
     doConnect = false;
   }
-  if(count == 80){
-      if(handClosed){
-          LINEAR.writeMicroseconds(LINEAR_MAX);
-          delay(10000);
-          }
+  
+    if(triggered){
+        Serial.println("TRIGGERED");
+        if(handClosed){
+            LINEAR.writeMicroseconds(LINEAR_MAX);
+            Serial.println("WRITE TO MAX");
+            delay(10000);
+            handClosed = false;
+            }
          else{
-           LINEAR.writeMicroseconds(LINEAR_MIN);
-           delay(10000);
-         }
+            LINEAR.writeMicroseconds(LINEAR_MIN);
+            Serial.println("WRITE TO MIN YO");
+            delay(10000);
+        
+            handClosed = true; 
+          }
     
-    }
-  delay(1000);
+      }
+      
 } // End of loop
