@@ -39,9 +39,11 @@ static BLERemoteCharacteristic* pRemoteCharacteristic;
 
 //variables for the rolling window approach
 
-int count = 0; //count of how many times the values are greater than the threshold
-int countTotal = 0; //counter for the total number of times EMG data is read in one loop
 
+int circularQueue[20];
+int tail = 0;
+double threshold = 20;
+int totalSingleFlexed = 0; //counts the number of triggered values in the circular queue
 bool triggered = false; //bool to say if 80% of countTotal is above threshold then trigger
 
 
@@ -51,45 +53,37 @@ static void notifyCallback(
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
     double sum = 0;
-    double threshold = 20;
+   
     
     for ( int i = 0; i < length; i ++)
     {
-      sum += abs((int8_t)pData[i]);
+      if((int8_t)pData[i]>10){ //arbitrary value of 10 to get rid of smaller EMG noise values
+        sum += abs((int8_t)pData[i]);
+      }
     }
     Serial.print("The sum of that line of characteristics is: ");
     Serial.println(sum/length);
-    if(sum/length >= threshold) {
-      (count)++;
-      Serial.print("The count is: ");
-      Serial.println(count);
-      
-      } //checks if that 16 byte array of EMG values is above threshold, if so increment the count
-    (countTotal)++; //keep track of how many times EMG values are read
-    Serial.print("The countTotal is: ");
-    Serial.println(countTotal);
-    if(countTotal >100 || count>20)
-    {
-      if(count>20){
-        triggered = true;
-        if(handClosed){
+    if(sum/length >= threshold) {  //checks if that 16 byte array of EMG values is above threshold, if so increment the count
+      circularQueue[tail]=1; //adds it to circularQueue
+      }
+    else circularQueue[tail]=0;
+    tail = (tail+1)%20;
+    for(int i=0; i<20;i++){
+      totalSingleFlexed += circularQueue[i];
+      }
+    if(totalSingleFlexed>=16){
+     if(handClosed && LINEAR.read()==0){ //the read function retruns the current pulse width modulus of the linear actuator
             LINEAR.writeMicroseconds(LINEAR_MAX);
             Serial.println("WRITE TO MAX");
-            delay(10000);
             handClosed = false;
             }
-         else{
+     else if(handclosed! && LINEAR.read()==0){
             LINEAR.writeMicroseconds(LINEAR_MIN);
             Serial.println("WRITE TO MIN YO");
-            delay(10000);
-        
             handClosed = true;
-        } 
-      
       }
-      countTotal = 0;
-      count = 0;
     }
+      
     
 }
     
