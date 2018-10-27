@@ -12,7 +12,7 @@
 //variables for the linear actuator
 #define LINEARPIN 18
 #define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
-#define LINEAR_MAX 2000 
+#define LINEAR_MAX 2000
 
 Servo LINEAR;
 //int linear50Value = 1500; //current positional value being sent to the linear actuator
@@ -53,17 +53,18 @@ static void notifyCallback(
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
     double sum = 0;
-   
-    
-    for ( int i = 0; i < length; i ++)
-    {
+    int counter = 0;
+
+
+    for ( int i = 0; i < length; i ++){
       if((int8_t)pData[i]>10){ //arbitrary value of 10 to get rid of smaller EMG noise values
         sum += abs((int8_t)pData[i]);
+        counter++;
       }
     }
     Serial.print("The sum of that line of characteristics is: ");
     Serial.println(sum/length);
-    if(sum/length >= threshold) {  //checks if that 16 byte array of EMG values is above threshold, if so increment the count
+    if(sum/counter >= threshold) {  //checks if that 16 byte array of EMG values is above threshold, if so increment the count
       circularQueue[tail]=1; //adds it to circularQueue
       }
     else circularQueue[tail]=0;
@@ -83,15 +84,15 @@ static void notifyCallback(
             handClosed = true;
       }
     }
-      
-    
+
+
 }
-    
+
 
 bool connectToServer(BLEAddress pAddress) {
     Serial.print("Forming a connection to ");
     Serial.println(pAddress.toString().c_str());
-    
+
     BLEClient*  pClient  = BLEDevice::createClient();
     Serial.println(" - Created client");
 
@@ -107,7 +108,7 @@ bool connectToServer(BLEAddress pAddress) {
       return false;
     }
     Serial.println(" - Found our service");
-    
+
     // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
     if (pRemoteCharacteristic == nullptr) {
@@ -117,13 +118,13 @@ bool connectToServer(BLEAddress pAddress) {
     }
     Serial.println(" - Found our characteristic");
 
-    // set sleep mode 
+    // set sleep mode
     uint8_t sleepPkt[3] = {0x09, 0x01, 0x01};
     pRemoteCharacteristic->writeValue(sleepPkt, 3, true);
     delay(500);
 
     // set EMG mode to send filtered
-    uint8_t emgPkt[5] = {0x01, 0x03, 0x02, 0x00, 0x00 }; 
+    uint8_t emgPkt[5] = {0x01, 0x03, 0x02, 0x00, 0x00 };
     pRemoteCharacteristic->writeValue(emgPkt, 5, true);
     delay(500);
 
@@ -138,7 +139,7 @@ bool connectToServer(BLEAddress pAddress) {
     }
     Serial.println(" - Found our EMG service");
     Serial.println(emgSUUID.toString().c_str());
-    
+
 // Obtain a reference to the characteristic in the service of the remote BLE server.
     pRemoteCharacteristic = pRemoteService->getCharacteristic(emgCUUID);
     if (pRemoteCharacteristic == nullptr) {
@@ -177,8 +178,8 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     // We have found a device, let us now see if it contains the service we are looking for.
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(serviceUUID)) {
 
-      // 
-      Serial.print("Found our device!  address: "); 
+      //
+      Serial.print("Found our device!  address: ");
       advertisedDevice.getScan()->stop();
 
       pServerAddress = new BLEAddress(advertisedDevice.getAddress());
@@ -211,7 +212,7 @@ void setup() {
 void loop() {
 
   // If the flag "doConnect" is true then we have scanned for and found the desired
-  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are 
+  // BLE Server with which we wish to connect.  Now we connect to it.  Once we are
   // connected we set the connected flag to be true.
   if (doConnect == true) {
     if (connectToServer(*pServerAddress)) {
@@ -222,7 +223,7 @@ void loop() {
     }
     doConnect = false;
   }
-  
+
 //    if(triggered){
 //        Serial.println("TRIGGERED");
 //        if(handClosed){
@@ -235,10 +236,10 @@ void loop() {
 //            LINEAR.writeMicroseconds(LINEAR_MIN);
 //            Serial.println("WRITE TO MIN YO");
 //            delay(10000);
-//        
-//            handClosed = true; 
+//
+//            handClosed = true;
 //          }
-//    
+//
 //      }
-      
+
 } // End of loop
