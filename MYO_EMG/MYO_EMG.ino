@@ -1,4 +1,7 @@
-#include <ESP32Servo.h>
+
+
+
+//#include <ESP32Servo.h>
 
 /**
  * @file    MYO_EMG
@@ -6,7 +9,6 @@
  * @date    August 2018
  * @brief   Communicating between the Myo armband and ESP32 via BLE to receive EMG notifications
  */
-
 #include <BLEDevice.h>
 
 //variables for the linear actuator
@@ -14,7 +16,7 @@
 #define LINEAR_MIN 1050   //max & min pulses in microseconds for the linear actuator
 #define LINEAR_MAX 2000
 
-Servo LINEAR;
+//Servo LINEAR;
 //int linear50Value = 1500; //current positional value being sent to the linear actuator
 bool handClosed = false; //use to keep track of the position of the actuator, start off with hand being assumed open
 
@@ -43,39 +45,43 @@ static BLERemoteCharacteristic* pRemoteCharacteristic;
 int circularQueue[20];
 int tail = 0;
 double threshold = 20;
-int totalSingleFlexed = 0; //counts the number of triggered values in the circular queue
+
 bool triggered = false; //bool to say if 80% of countTotal is above threshold then trigger
 
 
 static void notifyCallback(
   BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
-    Serial.print("Notify callback for EMG Data Characteristic: ");
-    Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
+    //Serial.print("Notify callback for EMG Data Characteristic: ");
+    //Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     int8_t emgData;
     double sum = 0;
+    int totalSingleFlexed = 0; //counts the number of triggered values in the circular queue
+  
     int counter = 0;
 
-
     for ( int i = 0; i < length; i ++){
-      if((int8_t)pData[i]>10){ //arbitrary value of 10 to get rid of smaller EMG noise values
+      if(abs((int8_t)pData[i])>10){ //arbitrary value of 10 to get rid of smaller EMG noise values
         sum += abs((int8_t)pData[i]);
         counter++;
       }
     }
-    Serial.print("The sum of that line of characteristics is: ");
-    Serial.println(sum/length);
-    if(sum/counter >= threshold) {  //checks if that 16 byte array of EMG values is above threshold, if so increment the count
+   // Serial.print("The sum of that line of characteristics is: ");
+    //Serial.println(sum/counter);
+    if(counter!=0 && sum/counter >= threshold) {  //checks if that 16 byte array of EMG values is above threshold, if so increment the count
       circularQueue[tail]=1; //adds it to circularQueue
-      Serial.println("Added to circular queue");
+      Serial.print("Added to circular queue");
+      Serial.println(sum/counter);
       }
     else circularQueue[tail]=0;
     tail = (tail+1)%20;
+    counter = 0;
     for(int i=0; i<20;i++){
       totalSingleFlexed += circularQueue[i];
       }
     if(totalSingleFlexed>=16){
-      Serial.println("FLEXED!");
-
+      Serial.print("FLEXED! totalSignleFlexed = ");
+      Serial.println(totalSingleFlexed);
+  
      // if(handClosed && LINEAR.read()==0){ //the read function retruns the current pulse width modulus of the linear actuator
      //        LINEAR.writeMicroseconds(LINEAR_MAX);
      //        Serial.println("WRITE TO MAX");
@@ -87,7 +93,7 @@ static void notifyCallback(
      //        handClosed = true;
      //  }
     }
-
+    totalSingleFlexed = 0;
 
 }
 
@@ -205,9 +211,9 @@ void setup() {
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true);
   pBLEScan->start(30);
-  LINEAR.attach(LINEARPIN);
-  LINEAR.writeMicroseconds(LINEAR_MAX);
-  delay(10000);
+//  LINEAR.attach(LINEARPIN);
+//  LINEAR.writeMicroseconds(LINEAR_MAX);
+//  delay(10000);
 } // End of setup.
 
 
