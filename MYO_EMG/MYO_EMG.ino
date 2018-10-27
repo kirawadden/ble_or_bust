@@ -66,6 +66,7 @@ static void notifyCallback(
     Serial.println(sum/length);
     if(sum/counter >= threshold) {  //checks if that 16 byte array of EMG values is above threshold, if so increment the count
       circularQueue[tail]=1; //adds it to circularQueue
+      Serial.println("Added to circular queue");
       }
     else circularQueue[tail]=0;
     tail = (tail+1)%20;
@@ -73,16 +74,18 @@ static void notifyCallback(
       totalSingleFlexed += circularQueue[i];
       }
     if(totalSingleFlexed>=16){
-     if(handClosed && LINEAR.read()==0){ //the read function retruns the current pulse width modulus of the linear actuator
-            LINEAR.writeMicroseconds(LINEAR_MAX);
-            Serial.println("WRITE TO MAX");
-            handClosed = false;
-            }
-     else if(handclosed! && LINEAR.read()==0){
-            LINEAR.writeMicroseconds(LINEAR_MIN);
-            Serial.println("WRITE TO MIN YO");
-            handClosed = true;
-      }
+      Serial.println("FLEXED!");
+
+     // if(handClosed && LINEAR.read()==0){ //the read function retruns the current pulse width modulus of the linear actuator
+     //        LINEAR.writeMicroseconds(LINEAR_MAX);
+     //        Serial.println("WRITE TO MAX");
+     //        handClosed = false;
+     //        }
+     // else if(handclosed! && LINEAR.read()==0){
+     //        LINEAR.writeMicroseconds(LINEAR_MIN);
+     //        Serial.println("WRITE TO MIN YO");
+     //        handClosed = true;
+     //  }
     }
 
 
