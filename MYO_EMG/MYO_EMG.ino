@@ -82,6 +82,9 @@ static void notifyCallback(
     if(totalSingleFlexed>=16 && lastTrigger==false){
       Serial.print("FLEXED! totalSignleFlexed = ");
       Serial.println(totalSingleFlexed);
+      digitalWrite(13, HIGH);
+      delay(5000);
+      digitalWrite(23, LOW);
       lastTrigger=true;
 
      // if(handClosed && LINEAR.read()==0){ //the read function retruns the current pulse width modulus of the linear actuator
@@ -208,6 +211,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(13, OUTPUT);
   //LINEAR.attach(LINEARPIN, LINEAR_MIN, LINEAR_MAX);
   Serial.println("Starting Arduino BLE Client application...");
   BLEDevice::init("");
