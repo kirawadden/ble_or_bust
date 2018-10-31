@@ -45,6 +45,7 @@ static BLERemoteCharacteristic* pRemoteCharacteristic;
 int circularQueue[20];
 int tail = 0;
 double threshold = 20;
+bool lastTrigger = false;
 
 bool triggered = false; //bool to say if 80% of countTotal is above threshold then trigger
 
@@ -56,7 +57,7 @@ static void notifyCallback(
     int8_t emgData;
     double sum = 0;
     int totalSingleFlexed = 0; //counts the number of triggered values in the circular queue
-  
+
     int counter = 0;
 
     for ( int i = 0; i < length; i ++){
@@ -78,10 +79,11 @@ static void notifyCallback(
     for(int i=0; i<20;i++){
       totalSingleFlexed += circularQueue[i];
       }
-    if(totalSingleFlexed>=16){
+    if(totalSingleFlexed>=16 && lastTrigger==false){
       Serial.print("FLEXED! totalSignleFlexed = ");
       Serial.println(totalSingleFlexed);
-  
+      lastTrigger=true;
+
      // if(handClosed && LINEAR.read()==0){ //the read function retruns the current pulse width modulus of the linear actuator
      //        LINEAR.writeMicroseconds(LINEAR_MAX);
      //        Serial.println("WRITE TO MAX");
@@ -92,6 +94,12 @@ static void notifyCallback(
      //        Serial.println("WRITE TO MIN YO");
      //        handClosed = true;
      //  }
+    }
+    else if (totalSingleFlexed>=16 && lastTrigger==true){
+      lastTrigger = true;
+    }
+    else {
+      lastTrigger=false;
     }
     totalSingleFlexed = 0;
 
